@@ -537,8 +537,8 @@ function simplifyDebts() {
   const net = computeNetBalances();
   const creditors = [], debtors = [];
   Object.entries(net).forEach(([id, bal]) => {
-    if (bal > 0.005) creditors.push({ id: parseInt(id), amt: bal });
-    else if (bal < -0.005) debtors.push({ id: parseInt(id), amt: -bal });
+    if (bal < -0.005) creditors.push({ id: parseInt(id), amt: -bal });
+    else if (bal > 0.005) debtors.push({ id: parseInt(id), amt: bal });
   });
   creditors.sort((a,b) => b.amt - a.amt);
   debtors.sort((a,b) => b.amt - a.amt);
@@ -751,7 +751,7 @@ function renderDashboard() {
   document.getElementById('dash-stats').innerHTML = `
     <div class="stat"><div class="stat-num">${cur}${total.toFixed(0)}</div><div class="stat-lbl">Total All Time</div></div>
     <div class="stat amber"><div class="stat-num">${cur}${monthly.toFixed(0)}</div><div class="stat-lbl">This Month</div></div>
-    <div class="stat ${myNet>=0?'green':'red'}"><div class="stat-num">${cur}${Math.abs(myNet).toFixed(0)}</div><div class="stat-lbl">${myNet>=0?'You\'re owed':'You owe'}</div></div>
+    <div class="stat ${myNet<=-0.005?'green':myNet>=0.005?'red':''}"><div class="stat-num">${cur}${Math.abs(myNet).toFixed(0)}</div><div class="stat-lbl">${myNet<=-0.005?'You\'re owed':myNet>=0.005?'You owe':'All settled'}</div></div>
     <div class="stat"><div class="stat-num">${data.expenses.length}</div><div class="stat-lbl">Transactions</div></div>`;
 
   // Recent expenses
@@ -772,8 +772,8 @@ function renderDashboard() {
   const allNet = computeNetBalances();
   document.getElementById('dash-balances').innerHTML = data.members.map(m => {
     const n = allNet[m.id]||0;
-    const cls = n>0.005?'amount-pos':n<-0.005?'amount-neg':'amount-zero';
-    const label = n>0.005?`gets back ${fmtMoney(n)}`:n<-0.005?`owes ${fmtMoney(n)}`:'settled up';
+    const cls = n<-0.005?'amount-pos':n>0.005?'amount-neg':'amount-zero';
+    const label = n<-0.005?`gets back ${fmtMoney(-n)}`:n>0.005?`owes ${fmtMoney(n)}`:'settled up';
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
       ${avatarEl(m)} <span style="flex:1;font-weight:600">${m.name}</span>
       <span class="${cls}">${label}</span>
@@ -966,7 +966,7 @@ function renderMembers() {
 
   document.getElementById('members-grid').innerHTML = data.members.map((m,idx) => {
     const n = net[m.id]||0;
-    const cls = n>0.005?'amount-pos':n<-0.005?'amount-neg':'amount-zero';
+    const cls = n<-0.005?'amount-pos':n>0.005?'amount-neg':'amount-zero';
     const label = n>0.005?`Gets back ${fmtMoney(n)}`:n<-0.005?`Owes ${fmtMoney(n)}`:'Settled up';
     return `<div class="member-card">
       ${avatarEl(m,'avatar-lg')}
