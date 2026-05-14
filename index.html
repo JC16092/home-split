@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="page-title">Home Split</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#e0e7ff;
@@ -152,6 +153,33 @@ tr:hover td{background:var(--surface2)}
 .progress-fill{height:100%;border-radius:3px;background:var(--primary);transition:width .4s}
 /* ── RECURRING BADGE ── */
 .recurring-dot{display:inline-block;width:8px;height:8px;background:var(--warning);border-radius:50%;margin-left:6px;vertical-align:middle}
+/* ── LOADING BAR ── */
+#loading-bar{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6,#6366f1);background-size:200%;animation:shimmer 1.2s infinite;z-index:9999;display:none}
+@keyframes shimmer{0%{background-position:200%}100%{background-position:-200%}}
+/* ── FULL OVERLAYS ── */
+.full-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e1b4b);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.overlay-card{background:#1e293b;border-radius:20px;padding:32px;width:100%;max-width:480px;box-shadow:0 25px 60px rgba(0,0,0,.5);border:1px solid #334155}
+.overlay-card h2{color:#f1f5f9;font-size:1.4rem;font-weight:800;margin-bottom:8px}
+.overlay-card p{color:#94a3b8;font-size:.88rem;margin-bottom:20px;line-height:1.5}
+.overlay-card label{color:#94a3b8;font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;margin-top:12px}
+.overlay-card input,.overlay-card textarea{width:100%;padding:10px 12px;border:1.5px solid #334155;border-radius:8px;background:#0f172a;color:#f1f5f9;font-size:.87rem;outline:none;font-family:monospace}
+.overlay-card input:focus,.overlay-card textarea:focus{border-color:#6366f1}
+.overlay-card textarea{height:120px;font-size:.72rem;resize:none;line-height:1.4}
+.overlay-btn{width:100%;padding:12px;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:.95rem;margin-top:14px;transition:all .2s}
+.overlay-btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.overlay-btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.overlay-btn-ghost{background:transparent;color:#94a3b8;border:1.5px solid #334155}
+.overlay-btn-ghost:hover{border-color:#6366f1;color:#6366f1}
+.overlay-divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:#475569;font-size:.8rem}
+.overlay-divider::before,.overlay-divider::after{content:'';flex:1;height:1px;background:#334155}
+.step-list{list-style:none;counter-reset:steps;margin:12px 0 18px}
+.step-list li{counter-increment:steps;display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;color:#94a3b8;font-size:.83rem;line-height:1.4}
+.step-list li::before{content:counter(steps);background:#6366f1;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0;margin-top:1px}
+.copy-btn{background:#334155;border:none;color:#94a3b8;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:.75rem;float:right;margin-top:-2px}
+.copy-btn:hover{background:#6366f1;color:#fff}
+.sync-indicator{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;color:#10b981;font-weight:600}
+.sync-dot{width:7px;height:7px;background:#10b981;border-radius:50%;animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
 /* ── UTIL ── */
 .flex{display:flex}.flex-center{align-items:center}.gap-8{gap:8px}.gap-12{gap:12px}
 .text-sm{font-size:.82rem}.text-muted{color:var(--muted)}.text-bold{font-weight:700}
@@ -179,7 +207,7 @@ tr:hover td{background:var(--surface2)}
   </div>
   <div class="header-right">
     <button class="header-btn" onclick="exportCSV()" title="Export CSV"><span>📊</span><span>CSV</span></button>
-    <button class="header-btn" onclick="showShareModal()" title="Share"><span>🔗</span><span>Share</span></button>
+    <button class="header-btn" onclick="openModal('modal-invite')" title="Invite Friends"><span>👥</span><span>Invite</span></button>
     <button class="header-btn" onclick="toggleDark()" id="dark-btn" title="Toggle dark mode"><span>🌙</span></button>
     <button class="header-btn" onclick="openModal('modal-settings')" title="Settings"><span>⚙️</span></button>
   </div>
@@ -394,6 +422,59 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 
+<!-- LOADING BAR -->
+<div id="loading-bar"></div>
+
+<!-- SUPABASE SETUP OVERLAY -->
+<div class="full-overlay" id="setup-overlay" style="display:none">
+  <div class="overlay-card">
+    <h2>🔗 Connect Your Database</h2>
+    <p>Connect a free Supabase database so all 4 friends share the same live data — synced in real time.</p>
+    <ol class="step-list">
+      <li>Go to <strong style="color:#6366f1">supabase.com</strong> → Sign up free → New Project</li>
+      <li>Open <strong>SQL Editor</strong> → paste the SQL below → click Run</li>
+      <li>Go to <strong>Settings → API</strong> → copy Project URL &amp; anon key</li>
+    </ol>
+    <label>Setup SQL <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('setup-sql').value);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button></label>
+    <textarea id="setup-sql" readonly></textarea>
+    <label>Project URL</label>
+    <input id="setup-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
+    <label>Anon / Public Key</label>
+    <input id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+    <button class="overlay-btn overlay-btn-primary" onclick="connectSupabase()">Connect &amp; Continue →</button>
+  </div>
+</div>
+
+<!-- GROUP CREATE / JOIN OVERLAY -->
+<div class="full-overlay" id="group-overlay" style="display:none">
+  <div class="overlay-card">
+    <h2>🏠 Your Home Group</h2>
+    <p>Create a new group or join an existing one with a code from your friends.</p>
+    <label>Group Name</label>
+    <input id="new-group-name" placeholder="Our Home" value="Our Home">
+    <button class="overlay-btn overlay-btn-primary" onclick="createGroup()">Create New Group</button>
+    <div class="overlay-divider">or join existing</div>
+    <label>Invite Code / Link</label>
+    <input id="join-code" placeholder="Paste invite link or group code here">
+    <button class="overlay-btn overlay-btn-ghost" onclick="joinGroup()">Join Group</button>
+  </div>
+</div>
+
+<!-- INVITE FRIENDS MODAL -->
+<div class="modal-overlay" id="modal-invite">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h3>👥 Invite Friends</h3><button class="modal-close" onclick="closeModal('modal-invite')">×</button></div>
+    <p style="font-size:.88rem;color:var(--muted);margin-bottom:16px">Share this link with your friends. When they open it, they'll instantly join your group and see all shared expenses in real time.</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="invite-url" readonly style="font-size:.78rem;font-family:monospace">
+      <button class="btn btn-primary" onclick="copyInviteLink()">Copy</button>
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--r-sm);padding:12px;font-size:.82rem;color:var(--muted)">
+      💡 Each friend opens the link once on their device — after that they're permanently joined to this group.
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -415,31 +496,155 @@ let balMode = 'simplified';
 let charts = {};
 
 // ═══════════════════════════════════════════════════════
-//  DATA MODEL
+//  SUPABASE + DATA MODEL
 // ═══════════════════════════════════════════════════════
-function defaultData() {
-  return {
-    meta: { groupName:'Our Home', currency:'$', createdAt: today() },
-    members: [
-      { id:1, name:'You', color:COLORS[0] },
-      { id:2, name:'Friend 1', color:COLORS[1] },
-      { id:3, name:'Friend 2', color:COLORS[2] },
-      { id:4, name:'Friend 3', color:COLORS[3] }
-    ],
-    expenses: [],
-    settlements: [],
-    activity: []
-  };
+let sb = null;
+let groupId = null;
+let realtimeChannel = null;
+
+const SETUP_SQL = `create table if not exists groups (
+  id uuid default gen_random_uuid() primary key,
+  name text default 'Our Home',
+  currency text default '$'
+);
+create table if not exists members (
+  id bigint primary key,
+  group_id uuid references groups(id) on delete cascade,
+  name text not null,
+  color text default '#6366f1'
+);
+create table if not exists expenses (
+  id text primary key,
+  group_id uuid references groups(id) on delete cascade,
+  description text, amount decimal(10,2), cat text default 'other',
+  paid_by bigint, split_type text default 'equal',
+  split_with jsonb default '[]', split_details jsonb default '{}',
+  date text, notes text default '', recurring boolean default false,
+  created_at timestamptz default now()
+);
+create table if not exists settlements (
+  id text primary key,
+  group_id uuid references groups(id) on delete cascade,
+  from_member bigint, to_member bigint, amount decimal(10,2),
+  notes text default '', date text, created_at timestamptz default now()
+);
+create table if not exists activity_log (
+  id serial primary key,
+  group_id uuid references groups(id) on delete cascade,
+  icon text, text text, ts timestamptz default now()
+);
+alter table groups enable row level security;
+alter table members enable row level security;
+alter table expenses enable row level security;
+alter table settlements enable row level security;
+alter table activity_log enable row level security;
+create policy "open" on groups for all to anon using (true) with check (true);
+create policy "open" on members for all to anon using (true) with check (true);
+create policy "open" on expenses for all to anon using (true) with check (true);
+create policy "open" on settlements for all to anon using (true) with check (true);
+create policy "open" on activity_log for all to anon using (true) with check (true);`;
+
+let data = { meta:{groupName:'Our Home',currency:'$'}, members:[], expenses:[], settlements:[], activity:[] };
+function save() {} // no-op — Supabase handles persistence
+
+// ── Supabase init flow ──
+function connectSupabase() {
+  const url = document.getElementById('setup-url').value.trim();
+  const key = document.getElementById('setup-key').value.trim();
+  if (!url || !key) return toast('Enter both URL and anon key','error');
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  startApp(url, key);
 }
 
-let data;
-function load() {
-  const raw = localStorage.getItem('homesplit_v2');
-  data = raw ? JSON.parse(raw) : defaultData();
-  if (!data.meta) data.meta = { groupName:'Our Home', currency:'$', createdAt: today() };
-  if (!data.activity) data.activity = [];
+function startApp(url, key) {
+  sb = supabase.createClient(url, key);
+  document.getElementById('setup-overlay').style.display = 'none';
+  // Check for join link in URL hash
+  const hash = window.location.hash;
+  if (hash.startsWith('#join=')) {
+    const id = hash.slice(6).trim();
+    if (id) { groupId = id; localStorage.setItem('group_id', groupId); history.replaceState(null,'',location.pathname); }
+  }
+  groupId = groupId || localStorage.getItem('group_id');
+  if (groupId) { loadAndRender(); }
+  else { document.getElementById('group-overlay').style.display = 'flex'; }
 }
-function save() { localStorage.setItem('homesplit_v2', JSON.stringify(data)); }
+
+async function createGroup() {
+  const name = document.getElementById('new-group-name').value.trim() || 'Our Home';
+  const { data: grp, error } = await sb.from('groups').insert({name}).select().single();
+  if (error) return toast('Error: '+error.message,'error');
+  groupId = grp.id;
+  localStorage.setItem('group_id', groupId);
+  const now = Date.now();
+  await sb.from('members').insert([
+    {id:now,   group_id:groupId, name:'You',      color:COLORS[0]},
+    {id:now+1, group_id:groupId, name:'Friend 1', color:COLORS[1]},
+    {id:now+2, group_id:groupId, name:'Friend 2', color:COLORS[2]},
+    {id:now+3, group_id:groupId, name:'Friend 3', color:COLORS[3]},
+  ]);
+  document.getElementById('group-overlay').style.display = 'none';
+  loadAndRender();
+}
+
+async function joinGroup() {
+  const raw = document.getElementById('join-code').value.trim();
+  if (!raw) return toast('Paste an invite link or code','error');
+  const id = raw.includes('#join=') ? raw.split('#join=')[1] : raw;
+  const { data: grp } = await sb.from('groups').select('id').eq('id', id).single();
+  if (!grp) return toast('Group not found — check the code','error');
+  groupId = grp.id;
+  localStorage.setItem('group_id', groupId);
+  document.getElementById('group-overlay').style.display = 'none';
+  loadAndRender();
+}
+
+// ── Load from Supabase ──
+async function loadAndRender() {
+  showLoading(true);
+  try {
+    await fetchAll();
+    subscribeRealtime();
+    populatePickers();
+    render();
+  } catch(e) { toast('Connection error','error'); console.error(e); }
+  showLoading(false);
+}
+
+async function fetchAll() {
+  const [g, m, e, s, a] = await Promise.all([
+    sb.from('groups').select('*').eq('id', groupId).single(),
+    sb.from('members').select('*').eq('group_id', groupId).order('id'),
+    sb.from('expenses').select('*').eq('group_id', groupId).order('created_at'),
+    sb.from('settlements').select('*').eq('group_id', groupId).order('created_at'),
+    sb.from('activity_log').select('*').eq('group_id', groupId).order('ts',{ascending:false}).limit(80)
+  ]);
+  if (g.data) { data.meta = {groupName: g.data.name, currency: g.data.currency||'$'}; }
+  data.members     = (m.data||[]).map(r=>({id:r.id, name:r.name, color:r.color}));
+  data.expenses    = (e.data||[]).map(r=>({id:r.id, desc:r.description, amount:parseFloat(r.amount), cat:r.cat, paidBy:r.paid_by, splitType:r.split_type, splitWith:r.split_with||[], splitDetails:r.split_details||{}, date:r.date, notes:r.notes||'', recurring:r.recurring, createdAt:r.created_at}));
+  data.settlements = (s.data||[]).map(r=>({id:r.id, from:r.from_member, to:r.to_member, amount:parseFloat(r.amount), notes:r.notes||'', date:r.date}));
+  data.activity    = (a.data||[]).map(r=>({icon:r.icon, text:r.text, ts:r.ts}));
+}
+
+function subscribeRealtime() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  realtimeChannel = sb.channel('group:'+groupId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'expenses',    filter:`group_id=eq.${groupId}`}, ()=>silentRefresh())
+    .on('postgres_changes',{event:'*',schema:'public',table:'settlements', filter:`group_id=eq.${groupId}`}, ()=>silentRefresh())
+    .on('postgres_changes',{event:'*',schema:'public',table:'members',     filter:`group_id=eq.${groupId}`}, ()=>silentRefresh())
+    .on('postgres_changes',{event:'*',schema:'public',table:'activity_log',filter:`group_id=eq.${groupId}`}, ()=>silentRefresh())
+    .subscribe(status=>{ document.getElementById('sync-status').style.display = status==='SUBSCRIBED'?'inline-flex':'none'; });
+}
+
+async function silentRefresh() { await fetchAll(); populatePickers(); render(); }
+
+function showLoading(show) { document.getElementById('loading-bar').style.display = show?'block':'none'; }
+
+async function logActivity(icon, text) {
+  if (!sb||!groupId) return;
+  await sb.from('activity_log').insert({group_id:groupId, icon, text});
+}
 
 // ═══════════════════════════════════════════════════════
 //  UTILITY
@@ -702,29 +907,27 @@ function submitExpense() {
 
   const splitDetails = getSplitDetails();
 
+  const row = { group_id:groupId, description:desc, amount, cat, paid_by:paidBy, date, notes, recurring, split_type:splitType, split_with:splitWith, split_details:splitDetails };
   if (editingExpenseId) {
-    const idx = data.expenses.findIndex(e=>e.id===editingExpenseId);
-    if (idx>=0) {
-      data.expenses[idx] = {...data.expenses[idx], desc, amount, cat, paidBy, date, notes, recurring, splitType, splitWith, splitDetails };
-      logActivity('✏️', `${getMemberName(paidBy)} edited "${desc}"`);
-      toast('Expense updated', 'success');
-    }
+    const {error} = await sb.from('expenses').update(row).eq('id', editingExpenseId);
+    if (error) return toast('Error: '+error.message,'error');
+    await logActivity('✏️', `${getMemberName(paidBy)} edited "${desc}"`);
+    toast('Expense updated','success');
   } else {
-    const exp = { id: uid(), desc, amount, cat, paidBy, date, notes, recurring, splitType, splitWith, splitDetails, createdAt: new Date().toISOString() };
-    data.expenses.push(exp);
-    logActivity('💸', `${getMemberName(paidBy)} added "${desc}" (${fmtMoney(amount)})`);
-    toast('Expense added!', 'success');
+    const {error} = await sb.from('expenses').insert({id:uid(), ...row});
+    if (error) return toast('Error: '+error.message,'error');
+    await logActivity('💸', `${getMemberName(paidBy)} added "${desc}" (${fmtMoney(amount)})`);
+    toast('Expense added!','success');
   }
-
-  save(); closeModal('modal-expense'); render();
+  closeModal('modal-expense');
 }
 
-function deleteExpense(id) {
+async function deleteExpense(id) {
   const e = data.expenses.find(x=>x.id===id);
   if (!e || !confirm(`Delete "${e.desc}"?`)) return;
-  data.expenses = data.expenses.filter(x=>x.id!==id);
-  logActivity('🗑️', `Deleted expense "${e.desc}"`);
-  save(); render(); toast('Deleted');
+  await sb.from('expenses').delete().eq('id',id);
+  await logActivity('🗑️', `Deleted expense "${e.desc}"`);
+  toast('Deleted');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -985,24 +1188,25 @@ function renderMembers() {
 // ═══════════════════════════════════════════════════════
 //  MEMBER ACTIONS
 // ═══════════════════════════════════════════════════════
-function addMember() {
+async function addMember() {
   const name = document.getElementById('new-member-name').value.trim();
-  if (!name) return toast('Enter a name', 'error');
+  if (!name) return toast('Enter a name','error');
   if (data.members.find(m=>m.name.toLowerCase()===name.toLowerCase())) return toast('Name already exists','error');
   const color = COLORS[data.members.length % COLORS.length];
-  data.members.push({ id: Date.now(), name, color });
+  const {error} = await sb.from('members').insert({id:Date.now(), group_id:groupId, name, color});
+  if (error) return toast('Error: '+error.message,'error');
   document.getElementById('new-member-name').value = '';
-  logActivity('👤', `Added member "${name}"`);
-  save(); populatePickers(); renderMembers(); toast(name+' added!', 'success');
+  await logActivity('👤', `Added member "${name}"`);
+  toast(name+' added!','success');
 }
-function removeMember(id) {
+async function removeMember(id) {
   if (data.expenses.some(e=>e.paidBy===id||e.splitWith.includes(id))) return toast('Cannot remove — member has expenses','error');
   if (data.settlements.some(s=>s.from===id||s.to===id)) return toast('Cannot remove — member has settlements','error');
   const m = getMember(id);
   if (!confirm(`Remove ${m?.name}?`)) return;
-  data.members = data.members.filter(m=>m.id!==id);
-  logActivity('👤', `Removed member "${m?.name}"`);
-  save(); populatePickers(); renderMembers(); toast('Removed');
+  await sb.from('members').delete().eq('id',id);
+  await logActivity('👤', `Removed member "${m?.name}"`);
+  toast('Removed');
 }
 function openMemberEdit(id) {
   const m = getMember(id);
@@ -1010,14 +1214,13 @@ function openMemberEdit(id) {
   document.getElementById('edit-member-name').value = m.name;
   openModal('modal-member');
 }
-function saveMemberEdit() {
+async function saveMemberEdit() {
   const id = parseInt(document.getElementById('edit-member-id').value);
   const name = document.getElementById('edit-member-name').value.trim();
   if (!name) return toast('Enter a name','error');
-  const m = data.members.find(m=>m.id===id);
-  if (m) m.name = name;
+  await sb.from('members').update({name}).eq('id',id);
   closeModal('modal-member');
-  save(); populatePickers(); render(); toast('Saved','success');
+  toast('Saved','success');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1030,32 +1233,34 @@ function quickSettle(fromId, toId, amount) {
   switchTab('balances');
   document.getElementById('settle-amt').focus();
 }
-function settleUp() {
+async function settleUp() {
   const from = parseInt(document.getElementById('settle-from').value);
   const to = parseInt(document.getElementById('settle-to').value);
   const amount = parseFloat(document.getElementById('settle-amt').value);
   const notes = document.getElementById('settle-notes').value.trim();
   if (from===to) return toast('Cannot settle with yourself','error');
   if (!amount||amount<=0) return toast('Enter a valid amount','error');
-  data.settlements.push({ id:uid(), from, to, amount, notes, date:today() });
-  logActivity('✅', `${getMemberName(from)} settled ${fmtMoney(amount)} with ${getMemberName(to)}`);
+  const {error} = await sb.from('settlements').insert({id:uid(), group_id:groupId, from_member:from, to_member:to, amount, notes, date:today()});
+  if (error) return toast('Error: '+error.message,'error');
+  await logActivity('✅', `${getMemberName(from)} settled ${fmtMoney(amount)} with ${getMemberName(to)}`);
   document.getElementById('settle-amt').value='';
   document.getElementById('settle-notes').value='';
-  save(); renderBalances(); renderDashboard(); toast('Settlement recorded!','success');
+  toast('Settlement recorded!','success');
 }
-function deleteSettlement(id) {
+async function deleteSettlement(id) {
   if (!confirm('Remove this settlement?')) return;
-  data.settlements = data.settlements.filter(s=>s.id!==id);
-  save(); renderBalances(); renderDashboard(); toast('Removed');
+  await sb.from('settlements').delete().eq('id',id);
+  toast('Removed');
 }
 
 // ═══════════════════════════════════════════════════════
 //  SETTINGS & DATA
 // ═══════════════════════════════════════════════════════
-function saveGroupName(val) {
-  data.meta.groupName = val||'Our Home';
-  document.getElementById('page-title').textContent = val||'Home Split';
-  save();
+async function saveGroupName(val) {
+  const name = val||'Our Home';
+  data.meta.groupName = name;
+  document.getElementById('page-title').textContent = name;
+  if (sb && groupId) await sb.from('groups').update({name}).eq('id', groupId);
 }
 function toggleDark() {
   const html = document.documentElement;
@@ -1079,43 +1284,41 @@ function exportJSON() {
   const a=document.createElement('a'); a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));
   a.download=`homesplit-backup-${today()}.json`; a.click(); toast('JSON exported','success');
 }
-function importJSON(ev) {
+async function importJSON(ev) {
   const f=ev.target.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=e=>{
-    try { data=JSON.parse(e.target.result); save(); render(); closeModal('modal-settings'); toast('Data imported!','success'); }
-    catch { toast('Invalid JSON file','error'); }
-  }; r.readAsText(f); ev.target.value='';
-}
-function clearAllData() {
-  if(!confirm('Delete ALL data? This cannot be undone!')) return;
-  data=defaultData(); save(); render(); closeModal('modal-settings'); toast('Data cleared');
-}
-function showShareModal() {
-  try {
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-    const url = window.location.href.split('#')[0]+'#import='+encoded;
-    document.getElementById('share-url').value = url;
-  } catch { document.getElementById('share-url').value = 'State too large for URL — use Export JSON instead'; }
-  openModal('modal-share');
-}
-function copyShareLink() {
-  const url = document.getElementById('share-url').value;
-  navigator.clipboard.writeText(url).then(()=>toast('Link copied!','success')).catch(()=>{
-    document.getElementById('share-url').select(); document.execCommand('copy'); toast('Copied!','success');
-  });
-}
-function loadFromHash() {
-  const hash = window.location.hash;
-  if (hash.startsWith('#import=')) {
+  const r=new FileReader();
+  r.onload=async e=>{
     try {
-      const decoded = decodeURIComponent(escape(atob(hash.slice(8))));
-      const imported = JSON.parse(decoded);
-      if (confirm('Import shared data? This will replace your current data.')) {
-        data = imported; save(); render(); toast('Data imported from link!','success');
-        history.replaceState(null,'',window.location.pathname);
-      }
-    } catch(e) { console.warn('Hash import failed',e); }
-  }
+      const imp=JSON.parse(e.target.result);
+      if(!confirm('Import backup? This will overwrite current group data.')) return;
+      // Write all imported data to Supabase
+      if(imp.members?.length)   await sb.from('members').upsert(imp.members.map(m=>({...m,group_id:groupId})));
+      if(imp.expenses?.length)  await sb.from('expenses').upsert(imp.expenses.map(e=>({id:e.id,group_id:groupId,description:e.desc,amount:e.amount,cat:e.cat,paid_by:e.paidBy,split_type:e.splitType,split_with:e.splitWith,split_details:e.splitDetails,date:e.date,notes:e.notes,recurring:e.recurring})));
+      if(imp.settlements?.length) await sb.from('settlements').upsert(imp.settlements.map(s=>({id:s.id,group_id:groupId,from_member:s.from,to_member:s.to,amount:s.amount,notes:s.notes,date:s.date})));
+      await fetchAll(); render(); closeModal('modal-settings'); toast('Data imported!','success');
+    } catch { toast('Invalid JSON file','error'); }
+  };
+  r.readAsText(f); ev.target.value='';
+}
+async function clearAllData() {
+  if(!confirm('Delete ALL expenses, settlements and members? This cannot be undone!')) return;
+  await Promise.all([
+    sb.from('expenses').delete().eq('group_id',groupId),
+    sb.from('settlements').delete().eq('group_id',groupId),
+    sb.from('activity_log').delete().eq('group_id',groupId),
+  ]);
+  closeModal('modal-settings'); toast('Data cleared');
+}
+function showInviteModal() {
+  const url = location.origin + location.pathname + '#join=' + groupId;
+  document.getElementById('invite-url').value = url;
+  openModal('modal-invite');
+}
+function copyInviteLink() {
+  const url = document.getElementById('invite-url').value;
+  navigator.clipboard.writeText(url).then(()=>toast('Invite link copied! 🎉','success')).catch(()=>{
+    document.getElementById('invite-url').select(); document.execCommand('copy'); toast('Copied!','success');
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1132,10 +1335,11 @@ function populatePickers() {
   document.getElementById('group-name-input').value = data.meta.groupName||'Our Home';
   document.getElementById('currency-input').value = data.meta.currency||'$';
   document.getElementById('page-title').textContent = data.meta.groupName||'Home Split';
-  // Save currency on change
-  document.getElementById('currency-input').onblur = ()=>{
-    data.meta.currency = document.getElementById('currency-input').value||'$';
-    save(); render();
+  document.getElementById('currency-input').onblur = async ()=>{
+    const cur = document.getElementById('currency-input').value||'$';
+    data.meta.currency = cur;
+    if (sb && groupId) await sb.from('groups').update({currency:cur}).eq('id',groupId);
+    render();
   };
 }
 
@@ -1181,13 +1385,35 @@ document.querySelectorAll('.modal-overlay').forEach(overlay=>{
 // ═══════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════
-load();
+// Theme
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme) { document.documentElement.setAttribute('data-theme',savedTheme); document.getElementById('dark-btn').innerHTML = savedTheme==='dark'?'☀️':'🌙'; }
-loadFromHash();
-populatePickers();
-renderDashboard();
-renderExpenses();
+
+// Fill setup SQL
+document.getElementById('setup-sql').value = SETUP_SQL;
+
+// Add sync indicator to header
+document.querySelector('.header-right').insertAdjacentHTML('afterbegin',
+  `<span class="sync-indicator" id="sync-status" style="display:none;margin-right:4px">
+    <span class="sync-dot"></span>Live
+  </span>`);
+
+// Check for join link BEFORE checking stored groupId
+const _hash = window.location.hash;
+if (_hash.startsWith('#join=')) {
+  const _id = _hash.slice(6).trim();
+  if (_id) { localStorage.setItem('group_id', _id); history.replaceState(null,'',location.pathname); }
+}
+groupId = localStorage.getItem('group_id');
+
+// Boot
+const sbUrl = localStorage.getItem('sb_url');
+const sbKey = localStorage.getItem('sb_key');
+if (sbUrl && sbKey) {
+  startApp(sbUrl, sbKey);
+} else {
+  document.getElementById('setup-overlay').style.display = 'flex';
+}
 
 // Update split amounts when expense amount changes
 document.getElementById('exp-amount').addEventListener('input', ()=>{
